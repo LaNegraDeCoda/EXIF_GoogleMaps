@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EXIF Reader + Google Maps 🌎</title>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem;
+        background: #141414;
+        color: #faf6f6;
+      }
+      h1, h2 {
+        color: #444;
+      }
+      #preview {
+        margin-bottom: 2rem;
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 8px;
+        background: rgb(40, 40, 40);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      table, th, td {
+        border: 1px solid #ccc;
+      }
+      th, td {
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background: #090808;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 10px 20px;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      .gps-link {
+        margin-top: 10px;
+        display: inline-block;
+        color: #0077cc;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .title{
+        font-size: xx-small;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        color: rgb(51, 50, 50);
+        line-height: 1em;
+      }
+    </style>
+</head>
+<body>
+  <h1>Mini EXIF Reader 📸👀</h1>
+
+  <input type="file" id="fileInput" accept="image/*">
+  <div id="output"></div>
+  <button id="downloadJson" style="display:none;">Download EXIF as JSON</button>
+  
+  <script>
+  const input = document.getElementById('fileInput');
+  const output = document.getElementById('output');
+  const downloadButton = document.getElementById('downloadJson');
+  let lastMetaData = {};
+  
+  input.addEventListener('change', function() {
+    const file = input.files[0];
+    const reader = new FileReader();
+  
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        EXIF.getData(img, function() {
+          const lat = EXIF.getTag(this, 'GPSLatitude');
+          const lon = EXIF.getTag(this, 'GPSLongitude');
+          const latRef = EXIF.getTag(this, 'GPSLatitudeRef');
+          const lonRef = EXIF.getTag(this, 'GPSLongitudeRef');
+          const orientation = EXIF.getTag(this, 'Orientation');
+  
+          let gpsOutput = "";
+          if (lat && lon) {
+            const latitude = convertDMSToDD(lat, latRef);
+            const longitude = convertDMSToDD(lon, lonRef);
+            gpsOutput = `
+              <p><strong>Latitude:</strong> ${latitude}</p>
+              <p><strong>Longitude:</strong> ${longitude}</p>
+              <a class="gps-link" target="_blank" href="https://www.google.com/maps?q=${latitude},${longitude}">
+                View on Google Maps 🌎
+              </a>
+            `;
+          } else {
+            gpsOutput = "<p><em>No GPS data found in this image.</em></p>";
+          }
+  
+          // Get ALL metadata
+          const allMetaData = EXIF.getAllTags(this);
+          lastMetaData = allMetaData; // Save for JSON download
+  
+          let tableRows = "";
+          for (const key in allMetaData) {
+            tableRows += `
+              <tr>
+                <th>${key}</th>
+                <td>${allMetaData[key]}</td>
+              </tr>
+            `;
+          }
+  
+          // Auto rotate if Orientation is found
+          let rotationStyle = "";
+          if (orientation === 6) {
+            rotationStyle = "transform: rotate(90deg); max-width: 100%;";
+          }
+  
+          output.innerHTML = `
+            <h2>Preview</h2>
+            <img id="preview" src="${event.target.result}" style="${rotationStyle}">
+            <h2>GPS Info</h2>
+            ${gpsOutput}
+            <h2>All EXIF Metadata</h2>
+            <table>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+          `;
+  
+          // Show download button
+          downloadButton.style.display = 'inline-block';
+        });
+      };
+      img.src = event.target.result;
+    };
+    
+    reader.readAsDataURL(file);
+  });
+  
+  // Function: Convert DMS (degrees, minutes, seconds) to Decimal Degrees
+  function convertDMSToDD(dms, ref) {
+    const degrees = dms[0];
+    const minutes = dms[1];
+    const seconds = dms[2];
+    let dd = degrees + minutes / 60 + seconds / 3600;
+    if (ref === "S" || ref === "W") {
+      dd = dd * -1;
+    }
+    return dd;
+  }
+  
+  // Download EXIF as JSON
+  downloadButton.addEventListener('click', function() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(lastMetaData, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute('href', dataStr);
+    dlAnchor.setAttribute('download', 'exif-data.json');
+    dlAnchor.click();
+  });
+  </script>
+    <div class="title">MIND YOUR TECH IN BUSINESS <br>You Did It, Welcome to your Future </div>
+</body>
+</html>
