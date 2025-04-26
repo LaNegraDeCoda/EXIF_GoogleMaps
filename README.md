@@ -16,7 +16,7 @@ You can try the tool live by visiting the Demo Link.
 Installation
 Clone or download the repository.
 
-git clone https://github.com/your-username/exif-metadata-viewer.git
+git clone (https://github.com/LaNegraDeCoda/EXIF_GoogleMaps.git)
 Open the index.html file in your browser.
 
 Usage
